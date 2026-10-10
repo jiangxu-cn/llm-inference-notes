@@ -43,6 +43,7 @@
 |---|---|---|
 | [L01](lessons/L01-环境自检.md) | 打通 RTX 5070 环境 | sm_120 的三层结构（驱动 / 工具链 / 框架）、第一个 CUDA kernel |
 | [L02](lessons/L02-可信的benchmark.md) | 第一个可信的 benchmark | 用「连续 1000 kernel 当裁判」推翻教科书结论 |
+| [L03](lessons/L03-看见kernel之间的空隙.md) | 看见 kernel 之间的空隙 | 每次 `sync` 凿出 ~100 µs 空隙；**nsys 在 WSL2 静默失效**，改用 `torch.profiler` |
 
 ---
 
@@ -115,5 +116,14 @@ git push
 |---|---|---|
 | W1 | L01 环境自检 | ✅ |
 | W1 | L02 第一个可信的 benchmark | ✅ |
-| W1 | L03 nsys 第一条 timeline | ⏳ |
+| W1 | L03 看见 kernel 之间的空隙 | ✅ |
+| W2 | L04 算术强度与 Roofline | ⏳ |
 | W2–W15 | 见 [user-level.md](user-level.md) 第 7 节 | ⏳ |
+
+## ⚠️ 待办（W8 之前必须做）
+
+```
+NVIDIA 控制面板 → 开发者 → 管理 GPU 性能计数器 → 勾选「允许访问此计算机上的所有用户」
+```
+
+不做这步，`ncu` 读不到硬件计数器（报 `ERR_NVGPUCTRPERM`）。详见 [user-level.md](user-level.md) 6.4 节。

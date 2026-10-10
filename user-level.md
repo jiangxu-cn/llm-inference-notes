@@ -306,6 +306,34 @@ def bench(fn, warmup=10, rep=50):
 | 256 MB copy | 577.8 GB/s | ~672 GB/s | 86% |
 | 首次调用开销（warmup 必要性） | 204 ms vs 稳态 6.16 ms | — | 33× |
 
+### 6.4 ⭐ WSL2 下的 profiling 工具实测矩阵（L03 确立，**直接影响 W8**）
+
+| 工具 | 状态 | 能拿到什么 | 拿不到什么 |
+|---|---|---|---|
+| **`torch.profiler` + chrome trace** | ✅ **完全可用** | CPU 调用栈 + **GPU kernel 时间轴 + 空隙** | 系统级事件（OS/网络/文件 IO） |
+| **`ncu`** | ⚠️ 工具可用，**缺权限** | kernel 级 SOL / occupancy / bank conflict | 需要先开权限（见下） |
+| **`nsys`** | ❌ **GPU 侧静默失效** | 只有 CPU 侧：`cuda_api_sum` + `nvtx_sum` | `cuda_gpu_kern_sum` / `cuda_gpu_mem_time_sum` **为空，且不报错** |
+
+**nsys 失效原因**：nsys 2024.6.2（2024-12 构建）自带的 `libcupti.so.12.8` 与驱动 617.42（CUDA 13.4）不兼容 → GPU activity 追踪静默失效。
+**可选修复**：`sudo apt-get install -y cuda-nsight-systems-13-3`（非必须，`torch.profiler` 已覆盖 timeline 需求）
+
+**🔴 W8 之前必须做（否则 ncu 一步都跑不了）**：
+```
+NVIDIA 控制面板 → 开发者 → 管理 GPU 性能计数器 → 勾选「允许访问此计算机上的所有用户」
+```
+实测报错原文：`Profiling failed because ... the user does not have permission to access NVIDIA GPU Performance Counters`（https://developer.nvidia.com/ERR_NVGPUCTRPERM）
+
+**⚠️ 操作纪律**：`nsys` 抓不到数据时**不报错，只给一个空报告**。每次生成报告后**先看行数是不是 0**，再相信结论。
+
+**L03 实测基线**
+
+| 场景 | GPU 忙碌占比 | 平均空隙 |
+|---|---|---|
+| 背靠背提交 20 个 kernel | **98.7%** | 9.6 µs |
+| 每次 `synchronize()` | **88.1%** | **100.1 µs** |
+
+> 这组数据也解释了 L02 里 `bench()` 比裁判高 1.5% 的原因：`100 µs / 5689 µs = 1.76%`，与实测吻合。**两个独立实验互相印证。**
+
 **结论：走 WSL2 路线**（绕开 MSVC 缺失、对齐 JD 的 Linux 要求、为 W12–W13 的 vLLM 铺路）。
 `C:\tools` 那套 MinGW + OpenCV 与 CUDA 是**两条互不相通的编译链路**，整条路线里基本用不上，不要在它上面折腾。
 
@@ -320,9 +348,8 @@ def bench(fn, warmup=10, rep=50):
 | 讲 | 标题 | 实操（≤100 行） |
 |---|---|---|
 | L01 | 打通 RTX 5070 环境：CUDA 12.8 / PyTorch cu128 / nsys | `env_check.py` 自检脚本（5 项断言） |
-| L02 | 第一个可信的 benchmark：warmup、重复、中位数、CUDA event | `bench.py` |
-| L03 | nsys 第一条 timeline：看懂 prefill/decode 与 kernel 空隙 | 跑一次 + 截图标注 |
-
+| L02 | 第一个可信的 benchmark：warmup、重复、中位数、计时方法 | `bench.py` |
+| L03 | 看见 kernel 之间的空隙 | `l03_timeline.py` + chrome trace |
 **交付物**：`env-baseline.md`（环境清单 + 一个模型推理的 baseline 数字 + 第一条 timeline）
 **验收**：能一条命令复现 baseline 数字；能解释 timeline 上为什么 decode 有大量小 kernel
 
@@ -407,7 +434,7 @@ def bench(fn, warmup=10, rep=50):
 |---|---|---|---|---|
 | L01 | RTX 5070 环境自检 | ✅ | — | 5 项全绿（2026-10-10）。torch **2.11.0+cu128** / CUDA **12.8** / **sm_120** / 首个自定义 CUDA kernel 跑通 |
 | L02 | 第一个可信的 benchmark | ✅ | 待做 | 标准测量协议确立：`perf_counter`+`synchronize`+中位数（本机 CUDA Event 偏高 9.5%，与裁判差 1.5%） |
-| L03 | nsys 第一条 timeline | ❌ | | |
+| L03 | 看见 kernel 之间的空隙 | ✅ | 待做 | 改走 `torch.profiler` chrome trace（nsys 在 WSL2 抓不到 GPU 侧，见 6.4）。实测每次 `sync` 凿出 ~100 µs 空隙，GPU 忙碌 98.7% → 88.1% |
 | L04 | 算术强度与 Roofline | ❌ | | |
 | L05 | decode 为什么 memory-bound | ❌ | | |
 | L06 | 第一个 CUDA kernel + cpp_extension | ❌ | | |
@@ -427,6 +454,7 @@ def bench(fn, warmup=10, rep=50):
 | v1.2 | 2026-10-10 | 你确认**可加 30% 学习时间**（20 → 26 h/周）。**撤销所有内容裁剪**：13 周 → **15 周**，260 h → **390 h**。8 项被砍内容全部恢复（SGEMM 目标回调至 70%、vLLM 源码通读、FA 反向、Profiling 做深、Tensor Core、CSAPP Ch5–6、llama.cpp/GGUF、TensorRT-LLM），仍余 ≈40 h 缓冲。新增 3.2 节区分"因时间砍掉"与"本来就不该学" |
 | v1.3 | 2026-10-10 | **L01 完成 ✅ 5 项断言全绿。** 记录最终环境（驱动 617.42 / CUDA 12.8 / torch 2.11.0+cu128 / sm_120 / nsys 2024.6.2 / ncu 2025.1.1）；新增 6.2 节记录本次 4 个环境坑；确认 `C:\tools` 的 MinGW+OpenCV 整条路线用不上 |
 | v1.4 | 2026-10-10 | **L02 完成 ✅。** 用"连续 1000 kernel 当裁判"的实验推翻教科书结论：**本机 CUDA Event 逐次计时偏高 9.5%，`perf_counter`+`synchronize` 仅偏 +1.5%**。据此确立 6.3 节「本项目标准测量协议」，后面 13 周所有性能数字统一走这套 |
+| v1.5 | 2026-10-10 | **L03 完成 ✅。** 实测发现 **nsys 在 WSL2 下 GPU 侧静默失效**（只有 CPU 侧数据且不报错），改用 `torch.profiler` 的 chrome trace。新增 6.4 节 profiling 工具矩阵 + W8 前置权限待办。实测：每次 `sync` 凿出 ~100 µs 空隙，GPU 忙碌从 98.7% 降到 88.1%——**同时解开了 L02 那 1.5% 偏差的来源** |
 
 ---
 
