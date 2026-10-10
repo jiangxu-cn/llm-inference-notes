@@ -91,6 +91,22 @@ def bench(fn, warmup=10, rep=50):
 
 ---
 
+## 日常同步
+
+凭据走 **GitHub CLI**（`gh auth setup-git`），不需要手动管理 token。
+
+```bash
+# 每讲结束后
+git add -A
+git commit -m "L03: nsys 第一条 timeline"
+git push
+```
+
+> 从 WSL 里操作 `C:\code` 也可以，路径是 `/mnt/c/code`。
+> 但注意：**代码和编译产物请放 Linux 侧的 `~/work`** —— WSL 访问 `/mnt/c` 走 9p 协议，I/O 慢好几倍。
+
+---
+
 ## 进度
 
 | 周 | 讲 | 状态 |
