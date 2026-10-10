@@ -1,0 +1,38 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ---- CUDA / torch 编译产物 ----
+*.o
+*.obj
+*.so
+*.pyd
+*.cubin
+*.ptx
+*.fatbin
+build/
+dist/
+.cache/
+
+# ---- Profiler 输出（很大，不进仓库）----
+*.nsys-rep
+*.ncu-rep
+*.sqlite
+*.qdrep
+report*.csv
+
+# ---- 编辑器 / 系统 ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+
+# ---- 沙箱/临时文件 ----
+.dsh-*
+*.tmp
+*.log
