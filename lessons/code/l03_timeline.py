@@ -2,8 +2,9 @@
 """L03 · 看见 kernel 之间的空隙
 
 用法：
+    source ~/work/venv/bin/activate      # 激活虚拟环境，之后 python 就是 venv 里的那个
     cd ~/work
-    ~/work/venv/bin/python l03_timeline.py
+    python l03_timeline.py
 
 导出 l03_trace.json，用浏览器打开 https://ui.perfetto.dev 拖进去即可看时间轴。
 ────────────────────────────────────────────────────────────────────────

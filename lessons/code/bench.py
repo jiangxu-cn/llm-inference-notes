@@ -2,8 +2,17 @@
 """L02 · 第一个可信的 benchmark
 
 用法：
+    source ~/work/venv/bin/activate      # 激活虚拟环境，之后 python 就是 venv 里的那个
     cd ~/work
-    ~/work/venv/bin/python bench.py
+    python bench.py
+
+    （不想激活也可以，直接用绝对路径：
+        ~/work/venv/bin/python ~/work/bench.py ）
+
+【为什么不能直接敲 `python bench.py`】
+    1. Ubuntu 24.04 只有 python3，没有 python。激活 venv 后它会提供 python 这个命令
+    2. torch 装在 ~/work/venv 里，系统 python3 里没有 → 直接 import 报 ModuleNotFoundError
+    3. 这个文件在 ~/work/ 下，不在 /mnt/c/code/ 下
 ────────────────────────────────────────────────────────────────────────
 【整体流程】
 

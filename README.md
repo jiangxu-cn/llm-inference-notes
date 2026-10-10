@@ -82,14 +82,30 @@ def bench(fn, warmup=10, rep=50):
 
 ---
 
-## 用法
+## 怎么跑代码
+
+**三步走**（第一次跑、或者改了仓库里的代码之后，先做第 ① 步）：
 
 ```bash
-# 环境自检
-~/work/venv/bin/python env_check.py
+bash ~/work/sync.sh                 # ① 把仓库里的代码同步到 ~/work
+source ~/work/venv/bin/activate     # ② 激活虚拟环境
+cd ~/work && python bench.py        # ③ 跑
+```
 
-# 跑某讲的代码
-~/work/venv/bin/python lessons/code/bench.py
+**为什么不能直接敲 `python bench.py`** —— 会踩三个不同的坑：
+
+| 现象 | 原因 |
+|---|---|
+| `python: command not found` | Ubuntu 24.04 只有 `python3`，没有 `python`。**激活 venv 后它才会提供 `python`** |
+| `ModuleNotFoundError: No module named 'torch'` | torch 装在 `~/work/venv` 里，系统 `python3` 里没有 |
+| `can't open file 'bench.py'` | 代码的**运行副本**在 `~/work/`，不在 `/mnt/c/code/` |
+
+**为什么要有两份**：仓库放 `/mnt/c/code`（方便 git 同步），运行副本放 `~/work` —— WSL 访问 `/mnt/c` 走 9p 协议，**I/O 慢好几倍**，所以代码和编译产物都放 Linux 侧。
+
+**检查环境是否正常**：
+
+```bash
+~/work/venv/bin/python ~/work/env_check.py    # 5 项断言，全绿才说明环境没坏
 ```
 
 ---

@@ -414,6 +414,33 @@ NVIDIA 控制面板 → 开发者 → 管理 GPU 性能计数器 → 勾选「�
 
 > 这组数据也解释了 L02 里 `bench()` 比裁判高 1.5% 的原因：`100 µs / 5689 µs = 1.76%`，与实测吻合。**两个独立实验互相印证。**
 
+### 6.5 代码运行约定（L03 后确立）
+
+**跑任何一讲的代码，三步走：**
+
+```bash
+bash ~/work/sync.sh                 # ① 把仓库里的代码同步到 ~/work
+source ~/work/venv/bin/activate     # ② 激活虚拟环境（之后 python 就是 venv 里的）
+cd ~/work && python bench.py        # ③ 跑
+```
+
+**三个坑（踩过一次，记下来）**
+
+| 报错 | 原因 |
+|---|---|
+| `python: command not found` | Ubuntu 24.04 只有 `python3`，没有 `python`；**激活 venv 后才会提供 `python`** |
+| `No module named 'torch'` | torch 在 `~/work/venv` 里，系统 `python3` 里没有 |
+| `can't open file 'bench.py'` | 运行副本在 `~/work/`，不在 `/mnt/c/code/` |
+
+**为什么代码存两份**
+
+| 位置 | 用途 | 为什么 |
+|---|---|---|
+| `/mnt/c/code/lessons/code/` | **仓库（源）** | 方便 git 同步到 GitHub |
+| `~/work/` | **运行副本** | WSL 访问 `/mnt/c` 走 9p 协议，**I/O 慢好几倍**；编译产物也必须放 Linux 侧 |
+
+**改动只在仓库里做**，然后用 `bash ~/work/sync.sh` 单向同步到 `~/work`。**不要在 `~/work` 里改代码** —— 会被下次同步覆盖。
+
 **结论：走 WSL2 路线**（绕开 MSVC 缺失、对齐 JD 的 Linux 要求、为 W12–W13 的 vLLM 铺路）。
 `C:\tools` 那套 MinGW + OpenCV 与 CUDA 是**两条互不相通的编译链路**，整条路线里基本用不上，不要在它上面折腾。
 
@@ -537,6 +564,7 @@ NVIDIA 控制面板 → 开发者 → 管理 GPU 性能计数器 → 勾选「�
 | v1.5 | 2026-10-10 | **L03 完成 ✅。** 实测发现 **nsys 在 WSL2 下 GPU 侧静默失效**（只有 CPU 侧数据且不报错），改用 `torch.profiler` 的 chrome trace。新增 6.4 节 profiling 工具矩阵 + W8 前置权限待办。实测：每次 `sync` 凿出 ~100 µs 空隙，GPU 忙碌从 98.7% 降到 88.1%——**同时解开了 L02 那 1.5% 偏差的来源** |
 | v1.6 | 2026-10-10 | 新增 **5.6 节代码风格约定**（用户提出）：行数最少 / 注释不插在代码中间 / 注释必须解释 API 作用 |
 | v1.7 | 2026-10-10 | **用户亲自改版了 5.6 节的版式**：说明块从"全部堆在文件头"改为**紧贴它描述的那段代码**（每个函数 / 每段逻辑前面各一个）。据此重写 `bench.py` 与 `l03_timeline.py` 作为范例；5.6 节记录新版式 |
+| v1.8 | 2026-10-10 | 用户第一次自己跑代码时踩到 `python: command not found`（三个原因叠加）。新增 **6.5 节代码运行约定**（`sync.sh` → `activate` → 运行）与三个报错的对照表；新增 `scripts/sync.sh`；README 的「用法」改成「怎么跑代码」 |
 
 ---
 
