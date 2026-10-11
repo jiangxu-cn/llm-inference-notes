@@ -552,6 +552,32 @@ git config --global http.curloptResolve "github.com:443:140.82.112.3"
 
 **已清理**：`cmdkey /delete:gh:github.com:jiangxu-cn` 和 `gh:github.com:`
 
+**✅ 最终解决（2026-10-11）**
+
+```
+改 hosts:  140.82.112.3  github.com   （管理员）
+     ↓
+github.com:443 恢复  →  HTTPS 的 ls-remote 2.3 秒
+     ↓
+GCM 设备码授权（credential.gitHubAuthModes=device）
+     ↓
+凭据持久化到  git:https://github.com
+     ↓
+692425a..4eee541  main -> main   ✅
+```
+
+**以后 `git push` 不再需要任何授权交互**（凭据在 Windows 凭据管理器里）。
+
+**长期建议**：hosts 是绑死一个 IP 的，那个 IP 哪天再被封就又要改。**SSH 通道这次全程没被封**（`github.com:22`，137 ms，或 `ssh.github.com:443`）。
+公钥已生成但**尚未加到 GitHub 账号**，加一次即可一劳永逸：
+```
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICghQTWUj/5g1hfD9qiWpIQMgp8na1Ehs+ocmKqfBwjW jiangxu-cn@DESKTOP-M7F3JNJ
+```
+加到 https://github.com/settings/keys 后，把 remote 换回 SSH 即可：
+```powershell
+git remote set-url origin git@github.com:jiangxu-cn/llm-inference-notes.git
+```
+
 **结论：走 WSL2 路线**（绕开 MSVC 缺失、对齐 JD 的 Linux 要求、为 W12–W13 的 vLLM 铺路）。
 `C:\tools` 那套 MinGW + OpenCV 与 CUDA 是**两条互不相通的编译链路**，整条路线里基本用不上，不要在它上面折腾。
 
