@@ -175,15 +175,40 @@ kernel 名字示例  : void cutlass::Kernel2<cutlass_80_simt_sgemm_256x128_8x4_n
 chrome trace 已导出: l03_trace.json
 ```
 
-### 看真正的时间轴（推荐做一次）
+### 看真正的时间轴
 
-1. 浏览器打开 **https://ui.perfetto.dev**（在线，不用装东西）
-2. 把 [`code/traces/l03_trace.json`](code/traces/l03_trace.json) 拖进去
-3. 你会看到两条"泳道"：
-   - 上面是 **CPU 线程**（一堆 `aten::mm`、`cuLaunchKernel`）
-   - 下面是 **GPU Stream**（一串绿色的 kernel 块）
+> ⚠️ **原始讲义让你打开 https://ui.perfetto.dev —— 这个网站在你这里打不开。**
+> 实测：`ui.perfetto.dev` 和 `google.com` 都返回 `HTTP 000`（连不上），但 `pypi.org` 是通的。
+> Perfetto UI 托管在 Google 的基础设施上，属于被墙范围。
+>
+> 所以我们改用**完全离线**的方案：自己把 trace 画成图片。
 
-**放大看阶段 B** —— 你会亲眼看到 kernel 之间那些明显的空白。阶段 A 的 kernel 是紧贴的。
+```bash
+source ~/work/venv/bin/activate
+cd ~/work
+python l03_render.py          # 读 l03_trace.json，输出 l03_timeline.png
+```
+
+渲染结果：[`code/traces/l03_timeline.png`](code/traces/l03_timeline.png)
+
+**你在图上会看到三块：**
+
+| 面板 | 看什么 |
+|---|---|
+| **上：全貌** | 两个阶段各一行。A 是一条**完整连续**的绿带；B 的绿带里插满**红色细条** —— 红色就是 GPU 空闲 |
+| **中：A 放大** | 前 5 个 kernel。绿色几乎连成一片，红色只有发丝那么细（平均 3.8 µs） |
+| **下：B 放大** | 前 5 个 kernel。红色变成了**明显的色块**（平均 147.1 µs，是 A 的 39 倍） |
+
+**这就是"空隙"长什么样** —— 一眼能看出 B 阶段 GPU 被反复晾着。
+
+**其他不需要联网的查看器**（备用）：
+- Edge / Chrome 地址栏输入 `chrome://tracing` 或 `edge://tracing`，点 Load 选 `l03_trace.json`
+  （新版 Chromium 已标记为废弃，不一定还在；能用就用）
+- VS Code 装 Perfetto / Chrome Trace 相关插件
+
+> 📌 **顺带记一个教训**：我在 `l03_render.py` 里把时间换算成毫秒方便画图，
+> 结果标题里仍然写着 `us` —— 图上显示 `avg gap 0.1us`，实际是 **147 µs**，差了 1000 倍。
+> **单位不统一是这类可视化的头号 bug。** 改完才对上（现在显示 `147.1us`）。
 
 ---
 
