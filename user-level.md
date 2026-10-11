@@ -505,6 +505,53 @@ cd ~/work && python bench.py        # ③ 跑
 **🔴 遗留**：`C:\WindowsOld-Rescue-20261011\08-WSL\` 里那份 **24.67 GB 的救援 vhdx 还在**（`--import --vhd` 是复制不是移动）。
 确认新环境稳定运行几天后再删 —— 它是这次唯一的环境副本。
 
+### 6.7 🌐 GitHub 网络问题（2026-10-11 实测，重要）
+
+**现象**：`github.com:443` 超时，`git push` 报 `Could not connect to server 20.205.243.166:443`。
+先怀疑是 GFW 全面封锁，**实测发现不是**：
+
+| 目标 | 结果 |
+|---|---|
+| `github.com`（DNS 给的 **20.205.243.166**）:443 | ❌ 超时 |
+| `140.82.112.3` / `140.82.113.3` / `140.82.114.3` / `140.82.116.3` :443 | ✅ 214–286 ms |
+| `20.27.177.113` / `20.200.245.247` / `4.208.26.197` :443 | ✅ 82–265 ms |
+| `github.com:22`（SSH） | ✅ 137 ms |
+| `ssh.github.com:443` | ✅ 157 ms |
+| `api.github.com:443` | ✅ 通 |
+| `kkgithub.com:443`（镜像） | ✅ 通 |
+
+> **结论：不是 GitHub 被封，而是 DNS 解析到的那个 IP 被封了，其他 GitHub IP 全通。**
+> 这类"按单个 IP 封"的情况会**随机漂移** —— 今天这个 IP 被封，明天可能换一个。
+
+**已配置的两条通道**
+
+**① SSH（推荐，长期）** —— `git@github.com:...`
+- 已生成 `~/.ssh/id_ed25519`（ed25519，无口令）
+- `~/.ssh/config` 配了 `github.com:22` 和 `github-443`（走 `ssh.github.com:443`）两套
+- 实测 `ssh -T git@github.com` → `Permission denied (publickey)` = **网络通，只差把公钥加到账号**
+- 公钥：`ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICghQTWUj/5g1hfD9qiWpIQMgp8na1Ehs+ocmKqfBwjW jiangxu-cn@DESKTOP-M7F3JNJ`
+
+**② HTTPS + IP 覆盖（备用，免管理员）**
+```powershell
+git config --global http.curloptResolve "github.com:443:140.82.112.3"
+```
+实测 `ls-remote` **1.1 秒**。缺点：GCM / 浏览器不吃这个配置，所以**授权那一步仍需 github.com 可达**。
+
+**hosts 文件不可写**（`C:\Windows\System32\drivers\etc\hosts` 需要管理员）。改 hosts 是"一步全通"的方案：
+```
+140.82.112.3  github.com
+```
+
+**其他踩过的网络坑**
+
+| 现象 | 原因 |
+|---|---|
+| `winget install Git.Git` 卡死 10 分钟 | winget 从 github.com 下载（送 Delivery Optimization 失败后回落 WinINet），而 github.com 不可达 |
+| GCM 报 `Invalid username or token` | 凭据管理器里留着重装前 **gh CLI 的失效 token**（`gh:github.com:jiangxu-cn`）；GCM 2.9 会自动去读 gh 的凭据 |
+| `git push` 报 `could not read Username` | GCM 设备码流程在没有 TTY 的环境下无法交互，git 回落到终端提示 |
+
+**已清理**：`cmdkey /delete:gh:github.com:jiangxu-cn` 和 `gh:github.com:`
+
 **结论：走 WSL2 路线**（绕开 MSVC 缺失、对齐 JD 的 Linux 要求、为 W12–W13 的 vLLM 铺路）。
 `C:\tools` 那套 MinGW + OpenCV 与 CUDA 是**两条互不相通的编译链路**，整条路线里基本用不上，不要在它上面折腾。
 
