@@ -208,7 +208,29 @@ python l03_render.py          # 读 l03_trace.json，输出 l03_timeline.png
 
 > 📌 **顺带记一个教训**：我在 `l03_render.py` 里把时间换算成毫秒方便画图，
 > 结果标题里仍然写着 `us` —— 图上显示 `avg gap 0.1us`，实际是 **147 µs**，差了 1000 倍。
-> **单位不统一是这类可视化的头号 bug。** 改完才对上（现在显示 `147.1us`）。
+> **单位不统一是这类可视化的头号 bug。** 改完才对上（现在显示 `147.1µs`）。
+
+### 📌 中文标注怎么设（以后画图都要用）
+
+matplotlib 默认字体**没有汉字**，直接写中文会渲染成一串方框（俗称「豆腐块」）。
+
+`l03_render.py` 里的解决办法是从 **Windows 字体目录**取（WSL 直接能读，**不用 sudo 装任何东西**）：
+
+```python
+CJK_CANDIDATES = [
+    "/mnt/c/Windows/Fonts/msyh.ttc",      # 微软雅黑
+    "/mnt/c/Windows/Fonts/simhei.ttf",    # 黑体
+    "/mnt/c/Windows/Fonts/simsun.ttc",    # 宋体
+]
+fm.fontManager.addfont(path)                          # 注册字体文件
+plt.rcParams["font.family"] = name                    # 按字体名启用
+plt.rcParams["axes.unicode_minus"] = False            # ← 这行不能忘
+```
+
+**为什么必须设 `axes.unicode_minus = False`**：中文字体里的减号是另一个码位，
+不关掉的话坐标轴上的负数（比如 `-0.5`）会变成方框 —— 这是中文 matplotlib 最经典的坑。
+
+实测本机可用的 Windows 字体：微软雅黑 `msyh.ttc`、黑体 `simhei.ttf`、宋体 `simsun.ttc`、等线 `Deng.ttf`。
 
 ---
 

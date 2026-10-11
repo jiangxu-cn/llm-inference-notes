@@ -282,6 +282,18 @@ api_b(...)
 ③ 代码块内部干净吗（有没有夹注释）？
 ④ 行数能不能再压？
 
+### 5.7 画图约定（2026-10-11 用户提出）
+
+| 规则 | 做法 |
+|---|---|
+| **图上的标注用中文** | 用户要求所有图表文字用中文 |
+| **中文字体** | 从 `/mnt/c/Windows/Fonts/msyh.ttc`（微软雅黑）取，WSL 直接能读，不用 sudo。备选 `simhei.ttf` / `simsun.ttc` |
+| **必设** `plt.rcParams["axes.unicode_minus"] = False` | 否则坐标轴上的负数变方框 |
+| **不外链在线服务** | `ui.perfetto.dev` 等 Google 系网站在本机不可达（实测 HTTP 000）。所有可视化必须**离线可复现** |
+| **单位必须统一** | 换算过的量（µs↔ms）在标题/轴上要写对单位。**画图用 ms、标注写 µs 是踩过的坑，差了 1000 倍** |
+
+**参考实现**：[`lessons/code/l03_render.py`](lessons/code/l03_render.py) —— trace → PNG，含中文字体设置与图例
+
 ---
 
 ## 6. RTX 5070 专属环境注意事项 ⚠️
@@ -565,6 +577,7 @@ cd ~/work && python bench.py        # ③ 跑
 | v1.6 | 2026-10-10 | 新增 **5.6 节代码风格约定**（用户提出）：行数最少 / 注释不插在代码中间 / 注释必须解释 API 作用 |
 | v1.7 | 2026-10-10 | **用户亲自改版了 5.6 节的版式**：说明块从"全部堆在文件头"改为**紧贴它描述的那段代码**（每个函数 / 每段逻辑前面各一个）。据此重写 `bench.py` 与 `l03_timeline.py` 作为范例；5.6 节记录新版式 |
 | v1.8 | 2026-10-10 | 用户第一次自己跑代码时踩到 `python: command not found`（三个原因叠加）。新增 **6.5 节代码运行约定**（`sync.sh` → `activate` → 运行）与三个报错的对照表；新增 `scripts/sync.sh`；README 的「用法」改成「怎么跑代码」 |
+| v1.9 | 2026-10-11 | ① `ui.perfetto.dev` 被墙（实测 HTTP 000），改为**离线渲染**：`l03_render.py` 把 trace 画成 PNG。② 新增 **5.7 节画图约定**：图表标注用中文、字体从 Windows 目录取、必关 `axes.unicode_minus`、可视化必须离线可复现、单位必须统一。③ Windows Terminal 默认 profile 从 5.1 改为 PowerShell 7（7.6.6 本已是最新） |
 
 ---
 
