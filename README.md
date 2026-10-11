@@ -44,6 +44,7 @@
 | [L01](lessons/L01-环境自检.md) | 打通 RTX 5070 环境 | sm_120 的三层结构（驱动 / 工具链 / 框架）、第一个 CUDA kernel |
 | [L02](lessons/L02-可信的benchmark.md) | 第一个可信的 benchmark | 用「连续 1000 kernel 当裁判」推翻教科书结论 |
 | [L03](lessons/L03-看见kernel之间的空隙.md) | 看见 kernel 之间的空隙 | 每次 `sync` 凿出 ~100 µs 空隙；**nsys 在 WSL2 静默失效**，改用 `torch.profiler` |
+| [L04](lessons/L04-算术强度与Roofline.md) | 算术强度与 Roofline | 屋脊点 **44.6**；同硬件 GEMM 22.0 vs GEMV 0.20 TFLOPS，**差 110 倍** —— 决定该优化算力还是带宽 |
 
 ---
 
@@ -133,7 +134,8 @@ git push
 | W1 | L01 环境自检 | ✅ |
 | W1 | L02 第一个可信的 benchmark | ✅ |
 | W1 | L03 看见 kernel 之间的空隙 | ✅ |
-| W2 | L04 算术强度与 Roofline | ⏳ |
+| W2 | L04 算术强度与 Roofline | ✅ |
+| W2 | L05 decode 为什么 memory-bound | ⏳ |
 | W2–W15 | 见 [user-level.md](user-level.md) 第 7 节 | ⏳ |
 
 ## ⚠️ 待办（W8 之前必须做）

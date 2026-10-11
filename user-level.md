@@ -398,6 +398,20 @@ def bench(fn, warmup=10, rep=50):
 | 256 MB copy | 577.8 GB/s | ~672 GB/s | 86% |
 | 首次调用开销（warmup 必要性） | 204 ms vs 稳态 6.16 ms | — | 33× |
 
+**Roofline 基线（L04，RTX 5070）**
+
+屋脊点 = 30 TFLOPS ÷ 672 GB/s = **44.6 FLOPs/Byte**（算术强度低于它就带宽瓶颈）
+
+| 算子 | 算术强度 | 实测 | 理论上限 | 达成率 | 瓶颈 |
+|---|---|---|---|---|---|
+| GEMM 4096³ | 683.0 | 22.0 TFLOPS | 30.0 | 73% | **算力** |
+| GEMV（= decode 形态） | 0.5 | 0.20 TFLOPS | 0.34 | 59% | **带宽** |
+| Softmax (4096,4096) | 0.625 | 0.31 TFLOPS | 0.42 | 75% | 带宽 |
+| LayerNorm (4096,4096) | 0.875 | 0.42 TFLOPS | 0.59 | 71% | 带宽 |
+
+> 🎯 **一句话**：同一块显卡、同一个 cuBLAS，**GEMM 22.0 vs GEMV 0.20 TFLOPS，差 110 倍** —— 唯一原因是算术强度差 1366 倍。
+> 这条直接推出：**prefill 优化算力，decode 优化带宽（量化）**。
+
 ### 6.4 ⭐ WSL2 下的 profiling 工具实测矩阵（L03 确立，**直接影响 W8**）
 
 | 工具 | 状态 | 能拿到什么 | 拿不到什么 |
@@ -554,7 +568,7 @@ cd ~/work && python bench.py        # ③ 跑
 | L01 | RTX 5070 环境自检 | ✅ | — | 5 项全绿（2026-10-10）。torch **2.11.0+cu128** / CUDA **12.8** / **sm_120** / 首个自定义 CUDA kernel 跑通 |
 | L02 | 第一个可信的 benchmark | ✅ | 待做 | 标准测量协议确立：`perf_counter`+`synchronize`+中位数（本机 CUDA Event 偏高 9.5%，与裁判差 1.5%） |
 | L03 | 看见 kernel 之间的空隙 | ✅ | 题1 ✅ / 题2 ⚠️ / 题3 ⚠️ | 改走 `torch.profiler` chrome trace（nsys 在 WSL2 抓不到 GPU 侧，见 6.4）。实测每次 `sync` 凿出 ~100 µs 空隙，GPU 忙碌 99.5% → 84.6% |
-| L04 | 算术强度与 Roofline | ❌ | | |
+| L04 | 算术强度与 Roofline | ✅ | 待做 | 屋脊点 **44.6 FLOPs/Byte**。GEMM AI=683 / 22.0 TFLOPS（算力瓶颈）；GEMV AI=0.5 / 0.20 TFLOPS（带宽瓶颈）。**同硬件差 110 倍** |
 | L05 | decode 为什么 memory-bound | ❌ | | |
 | L06 | 第一个 CUDA kernel + cpp_extension | ❌ | | |
 | L07 | 线程模型与 warp | ❌ | | |
@@ -593,6 +607,8 @@ cd ~/work && python bench.py        # ③ 跑
 | v1.7 | 2026-10-10 | **用户亲自改版了 5.6 节的版式**：说明块从"全部堆在文件头"改为**紧贴它描述的那段代码**（每个函数 / 每段逻辑前面各一个）。据此重写 `bench.py` 与 `l03_timeline.py` 作为范例；5.6 节记录新版式 |
 | v1.8 | 2026-10-10 | 用户第一次自己跑代码时踩到 `python: command not found`（三个原因叠加）。新增 **6.5 节代码运行约定**（`sync.sh` → `activate` → 运行）与三个报错的对照表；新增 `scripts/sync.sh`；README 的「用法」改成「怎么跑代码」 |
 | v1.9 | 2026-10-11 | ① `ui.perfetto.dev` 被墙（实测 HTTP 000），改为**离线渲染**：`l03_render.py` 把 trace 画成 PNG。② 新增 **5.7 节画图约定**：图表标注用中文、字体从 Windows 目录取、必关 `axes.unicode_minus`、可视化必须离线可复现、单位必须统一。③ Windows Terminal 默认 profile 从 5.1 改为 PowerShell 7（7.6.6 本已是最新） |
+| v2.0 | 2026-10-11 | **L04 完成 ✅。** 新增公共画图模块 `plot_style.py`（中文字体 + 配色，以后所有图共用）。手算 + 实测四个算子的算术强度，建立 Roofline 基线（6.3 节）：**屋脊点 44.6**；GEMM AI=683 是算力瓶颈；GEMV/Softmax/LayerNorm AI<1 全是带宽瓶颈。**同硬件 GEMM 22.0 vs GEMV 0.20 TFLOPS，差 110 倍** |
+| | | ⚠️ 待办仍挂着：**NVIDIA 控制面板 → 开发者 → 管理 GPU 性能计数器 → 允许所有用户**（W8 之前的硬前置） |
 
 ---
 
