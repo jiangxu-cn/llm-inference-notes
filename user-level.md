@@ -467,6 +467,44 @@ cd ~/work && python bench.py        # ③ 跑
 
 **改动只在仓库里做**，然后用 `bash ~/work/sync.sh` 单向同步到 `~/work`。**不要在 `~/work` 里改代码** —— 会被下次同步覆盖。
 
+### 6.6 ⚠️ 系统重装与灾难恢复（2026-10-11）
+
+**事件**：Windows 重装（新系统安装时间 `2026-10-11 13:49:22`）。
+
+**恢复结果：全部救回，零损失。**
+
+| 东西 | 结果 | 恢复方式 |
+|---|---|---|
+| **`C:\code` 仓库** | ✅ 完整（47 文件 / 6 提交 / `692425a`） | 就在 C 盘，没被清 |
+| **整个 Ubuntu 环境** | ✅ 完整 | 从救援出的 `ext4.vhdx` 用 `wsl --import --vhd` 导入 |
+| CUDA 12.8 / torch 2.11 / venv / `~/work` | ✅ 全在 | 同上（省掉约 1 小时重装） |
+| Git | ✅ PortableGit 2.56.0 | 华为云镜像（GitHub 被 DNS 污染，winget 会卡死） |
+| Git 凭据 | ✅ GCM | 原配置指向已不存在的 `gh.exe`，已换 |
+
+**新环境坐标（和重装前不同，注意）**
+
+| 项目 | 值 |
+|---|---|
+| WSL 版本 | **3.0.1.0**（原 2.5.7.0） |
+| 发行版名 | **`Ubuntu-Restored`**（原 `Ubuntu`），已是默认 |
+| vhdx 位置 | `C:\Users\jiang\AppData\Local\WSL\Ubuntu-Restored\ext4.vhdx` |
+| Git | `%LOCALAPPDATA%\Programs\PortableGit\cmd\git.exe` |
+| PowerShell | **5.1**（7 被清掉了，待重装） |
+| GitHub CLI | ❌ 未安装 |
+| `.gitconfig` | 已备份为 `.gitconfig.bak-20261011`；**代理已移除**（Clash 未装，7890 无监听） |
+
+**恢复过程中确认的坑**
+
+| # | 现象 | 原因 / 解法 |
+|---|---|---|
+| 1 | `wsl --version` 报 `REGDB_E_CLASSNOTREG` | WSL 的 MSIX 只是个壳（只有 `wsl.exe`，没有 `wslservice.exe`），运行时 MSI 装失败。**解**：管理员跑 `wsl --install --no-distribution`，提示"按任意键修复"时**按空格**（别按 Ctrl+C） |
+| 2 | `winget install Git.Git` 卡死 10 分钟 | **`github.com` DNS 被污染**，winget 从 GitHub 下载会挂。**解**：用国内镜像（`mirrors.huaweicloud.com/git-for-windows/`）+ `PortableGit` 自解压版，**免管理员** |
+| 3 | `git` 连不上远端 | `.gitconfig` 里残留 `proxy=127.0.0.1:7890`，但 Clash 没装、端口无监听。**解**：移除代理（直连实测可用） |
+| 4 | 当前用户不是管理员 | winget 装 MSI 需要提权 → 一律改用**用户目录 zip/自解压**方案 |
+
+**🔴 遗留**：`C:\WindowsOld-Rescue-20261011\08-WSL\` 里那份 **24.67 GB 的救援 vhdx 还在**（`--import --vhd` 是复制不是移动）。
+确认新环境稳定运行几天后再删 —— 它是这次唯一的环境副本。
+
 **结论：走 WSL2 路线**（绕开 MSVC 缺失、对齐 JD 的 Linux 要求、为 W12–W13 的 vLLM 铺路）。
 `C:\tools` 那套 MinGW + OpenCV 与 CUDA 是**两条互不相通的编译链路**，整条路线里基本用不上，不要在它上面折腾。
 
@@ -609,6 +647,7 @@ cd ~/work && python bench.py        # ③ 跑
 | v1.9 | 2026-10-11 | ① `ui.perfetto.dev` 被墙（实测 HTTP 000），改为**离线渲染**：`l03_render.py` 把 trace 画成 PNG。② 新增 **5.7 节画图约定**：图表标注用中文、字体从 Windows 目录取、必关 `axes.unicode_minus`、可视化必须离线可复现、单位必须统一。③ Windows Terminal 默认 profile 从 5.1 改为 PowerShell 7（7.6.6 本已是最新） |
 | v2.0 | 2026-10-11 | **L04 完成 ✅。** 新增公共画图模块 `plot_style.py`（中文字体 + 配色，以后所有图共用）。手算 + 实测四个算子的算术强度，建立 Roofline 基线（6.3 节）：**屋脊点 44.6**；GEMM AI=683 是算力瓶颈；GEMV/Softmax/LayerNorm AI<1 全是带宽瓶颈。**同硬件 GEMM 22.0 vs GEMV 0.20 TFLOPS，差 110 倍** |
 | | | ⚠️ 待办仍挂着：**NVIDIA 控制面板 → 开发者 → 管理 GPU 性能计数器 → 允许所有用户**（W8 之前的硬前置） |
+| v2.1 | 2026-10-11 | **系统重装，全部恢复，零损失。** 新增 6.6 节灾难恢复记录：整个 Ubuntu（CUDA 12.8 / torch 2.11 / venv / `~/work`）从救援 vhdx 用 `wsl --import --vhd` 恢复；Git 用 PortableGit 2.56.0 免管理员装回（GitHub DNS 被污染，winget 走不通）；修掉 `.gitconfig` 里残留的失效代理。新坐标：发行版改名 `Ubuntu-Restored`、WSL 升到 3.0.1.0、PowerShell 退回 5.1（待重装）、gh 未装。**L01 五项验收重跑全绿，L04 全链路复现成功** |
 
 ---
 
